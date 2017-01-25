@@ -1,0 +1,141 @@
+##
+## @file Makefile.vc
+## @desc Makefile for Microsoft C/C++-based tools.
+##
+
+#
+# Configurations
+#
+
+# input options
+X64=0
+DEBUG=0
+SHARED=0
+
+# source, target and output
+SOURCE_DIR=.\src
+TARGET_DIR=.\obj
+OUTPUT_DIR=.\bin
+
+# C/C++ toolchain
+CC=cl
+RC=rc
+LD=link
+
+# C/C++ toolchain parameters
+CFLAGS=
+RFLAGS=
+LFLAGS=
+
+# CPU flags
+!IF "$(X64)" != "" && "$(X64)" != "0"
+# 64-bit
+TARGET_DIR=$(TARGET_DIR)\x64
+OUTPUT_DIR=$(OUTPUT_DIR)\x64
+X64_TAG=x64
+X64_CFLAGS=
+X64_RFLAGS=
+X64_LFLAGS=
+!ELSE
+# 32-bit
+TARGET_DIR=$(TARGET_DIR)\x86
+OUTPUT_DIR=$(OUTPUT_DIR)\x86
+X64_TAG=x86
+X64_CFLAGS=
+X64_RFLAGS=
+X64_LFLAGS=
+!ENDIF
+
+# debug flags
+!IF "$(DEBUG)" != "" && "$(DEBUG)" != "0"
+# debug build
+TARGET_DIR=$(TARGET_DIR)-debug
+DEBUG_TAG=d
+DEBUG_CFLAGS=/Zi /GS /DDEBUG=1 /D_DEBUG=1
+DEBUG_RFLAGS=/DDEBUG=1 /D_DEBUG=1
+DEBUG_LFLAGS=/DEBUG
+!ELSE
+# release build
+TARGET_DIR=$(TARGET_DIR)-release
+DEBUG_TAG=
+DEBUG_CFLAGS=/O2 /GS- /DNDEBUG
+DEBUG_RFLAGS=
+DEBUG_LFLAGS=
+!ENDIF
+
+# shared flags
+!IF "$(SHARED)" != "" && "$(SHARED)" != "0"
+# shared build
+TARGET_DIR=$(TARGET_DIR)-shared
+SHARED_TAG=
+SHARED_CFLAGS=/MD$(DEBUG_TAG)
+SHARED_RFLAGS=
+SHARED_LFLAGS=
+!ELSE
+# static build
+TARGET_DIR=$(TARGET_DIR)-static
+SHARED_TAG=s
+SHARED_CFLAGS=/MT$(DEBUG_TAG)
+SHARED_RFLAGS=
+SHARED_LFLAGS=
+!ENDIF
+
+# modules
+MODULES=\
+	$(TARGET_DIR)\winmain.obj \
+	$(TARGET_DIR)\resource.res
+
+# headers
+HEADERS=\
+	$(TARGET_DIR)\resource.h
+
+# directories
+INCLUDE_DIRS=
+LIBRARY_DIRS=
+
+# libraries
+LIBRARIES=comctl32.lib user32.lib gdi32.lib kernel32.lib
+
+# executable
+OUTPUT=hello$(SHARED_TAG)$(DEBUG_TAG).exe
+
+# common flags
+COMMON_DEFINES=/DUNICODE=1 /D_UNICODE=1 /D_CRT_SECURE_NO_DEPRECATE
+COMMON_CFLAGS=/nologo /W3 /EHsc /Fd$(OUTPUT_DIR)\$(OUTPUT).pdb $(INCLUDE_DIRS) $(COMMON_DEFINES) $(X64_CFLAGS) $(DEBUG_CFLAGS) $(SHARED_CFLAGS)
+COMMON_RFLAGS=/nologo $(X64_RFLAGS) $(DEBUG_RFLAGS) $(SHARED_RFLAGS)
+COMMON_LFLAGS=/nologo /MANIFEST:EMBED /INCREMENTAL:NO /PDB:$(OUTPUT_DIR)\$(OUTPUT).pdb $(LIBRARY_DIRS) $(X64_LFLAGS) $(DEBUG_LFLAGS) $(SHARED_LFLAGS)
+
+
+#
+# Rules
+#
+
+all: prepare $(OUTPUT_DIR)\$(OUTPUT)
+
+prepare:
+	-mkdir 2>NUL $(TARGET_DIR)
+	-mkdir 2>NUL $(OUTPUT_DIR)
+
+check: all
+	$(OUTPUT_DIR)\$(OUTPUT)
+
+clean:
+	-del /q 2>NUL $(TARGET_DIR)\*.obj
+	-del /q 2>NUL $(TARGET_DIR)\*.res
+
+clean-all: clean
+	-del /q 2>NUL $(OUTPUT_DIR)\$(OUTPUT).pdb
+	-del /q 2>NUL $(OUTPUT_DIR)\$(OUTPUT)
+
+$(OUTPUT_DIR)\$(OUTPUT): $(MODULES)
+	$(LD) $(LFLAGS) $(COMMON_LFLAGS) /OUT:$@ $** $(LIBRARIES)
+
+{$(SOURCE_DIR)}.cxx{$(TARGET_DIR)}.obj:
+	$(CC) $(CFLAGS) $(COMMON_CFLAGS) /Fo$@ /c $<
+
+{$(SOURCE_DIR)}.c{$(TARGET_DIR)}.obj:
+	$(CC) $(CFLAGS) $(COMMON_CFLAGS) /Fo$@ /c $<
+
+{$(SOURCE_DIR)}.rc{$(TARGET_DIR)}.res:
+	$(RC) $(RFLAGS) $(COMMON_RFLAGS) /fo$@ /r $<
+

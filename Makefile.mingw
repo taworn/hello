@@ -1,0 +1,139 @@
+##
+## @file Makefile.mingw
+## @desc Makefile for MinGW-based tools.
+##
+
+#
+# Configurations
+#
+
+# input options
+X64:=0
+DEBUG:=0
+SHARED:=0
+
+# source, target and output
+SOURCE_DIR:=.\src
+TARGET_DIR:=.\obj
+OUTPUT_DIR:=.\bin
+
+# C/C++ toolchain
+CC:=g++
+RC:=windres
+LD:=g++
+
+# C/C++ toolchain parameters
+CFLAGS:=
+RFLAGS:=
+LFLAGS:=
+
+# CPU flags
+ifneq ($(if $(X64),$(X64),0),0)
+# 64-bit
+TARGET_DIR:=$(TARGET_DIR)\x64
+OUTPUT_DIR:=$(OUTPUT_DIR)\x64
+X64_TAG:=x64
+X64_CFLAGS:=
+X64_RFLAGS:=
+X64_LFLAGS:=
+else
+# 32-bit
+TARGET_DIR:=$(TARGET_DIR)\x86
+OUTPUT_DIR:=$(OUTPUT_DIR)\x86
+X64_TAG:=x86
+X64_CFLAGS:=
+X64_RFLAGS:=
+X64_LFLAGS:=
+endif
+
+# debug flags
+ifneq ($(if $(DEBUG),$(DEBUG),0),0)
+# debug build
+TARGET_DIR:=$(TARGET_DIR)-debug
+DEBUG_TAG:=d
+DEBUG_CFLAGS:=-DDEBUG=1 -D_DEBUG=1 -g
+DEBUG_RFLAGS:=-DDEBUG=1 -D_DEBUG=1
+DEBUG_LFLAGS:=-g
+else
+# release build
+TARGET_DIR:=$(TARGET_DIR)-release
+DEBUG_TAG:=
+DEBUG_CFLAGS:=-O2 -DNDEBUG
+DEBUG_RFLAGS:=
+DEBUG_LFLAGS:=
+endif
+
+# shared flags
+ifneq ($(if $(SHARED),$(SHARED),0),0)
+# shared build
+TARGET_DIR:=$(TARGET_DIR)-shared
+SHARED_TAG:=
+SHARED_CFLAGS:=
+SHARED_RFLAGS:=
+SHARED_LFLAGS:=
+else
+# static build
+TARGET_DIR:=$(TARGET_DIR)-static
+SHARED_TAG:=s
+SHARED_CFLAGS:=-static
+SHARED_RFLAGS:=
+SHARED_LFLAGS:=-static
+endif
+
+# modules
+MODULES:=\
+	$(TARGET_DIR)\winmain.o \
+	$(TARGET_DIR)\resource.o
+
+# headers
+HEADERS:=\
+	$(TARGET_DIR)\resource.h
+
+# directories
+INCLUDE_DIRS:=
+LIBRARY_DIRS:=
+
+# libraries
+LIBRARIES:=-lcomctl32 -luser32 -lgdi32 -lkernel32
+
+# executable
+OUTPUT:=hellomingw$(SHARED_TAG)$(DEBUG_TAG).exe
+
+# common flags
+COMMON_DEFINES:=-DGLEW_STATIC -DUNICODE=1 -D_UNICODE=1
+COMMON_CFLAGS:=-Wall $(INCLUDE_DIRS) $(COMMON_DEFINES) $(X64_CFLAGS) $(DEBUG_CFLAGS) $(SHARED_CFLAGS)
+COMMON_RFLAGS:=$(X64_RFLAGS) $(DEBUG_RFLAGS) $(SHARED_RFLAGS)
+COMMON_LFLAGS:=-Wall -static-libgcc -static-libstdc++ $(LIBRARY_DIRS) $(X64_LFLAGS) $(DEBUG_LFLAGS) $(SHARED_LFLAGS)
+
+
+#
+# Rules
+#
+
+all: prepare $(OUTPUT_DIR)\$(OUTPUT)
+
+prepare:
+	if not exist $(TARGET_DIR) mkdir 2>NUL $(TARGET_DIR)
+	if not exist $(OUTPUT_DIR) mkdir 2>NUL $(OUTPUT_DIR)
+
+check: all
+	$(OUTPUT_DIR)\$(OUTPUT)
+
+clean:
+	if exist $(TARGET_DIR) del /q 2>NUL $(TARGET_DIR)\*.o
+
+clean-all: clean
+	if exist $(OUTPUT_DIR) del /q 2>NUL $(OUTPUT_DIR)\$(OUTPUT)
+
+$(OUTPUT_DIR)\$(OUTPUT): $(MODULES)
+	$(LD) $(LFLAGS) $(COMMON_LFLAGS) -o $@ $+ $(LIBRARIES)
+
+$(TARGET_DIR)\\%.o: $(SOURCE_DIR)\\%.cxx
+	$(CC) $(CFLAGS) $(COMMON_CFLAGS) -o $@ -c $<
+
+$(TARGET_DIR)\\%.o: $(SOURCE_DIR)\\%.c
+	$(CC) $(CFLAGS) $(COMMON_CFLAGS) -o $@ -c $<
+
+$(TARGET_DIR)\\%.o: $(SOURCE_DIR)\\%.rc
+	$(RC) $(RFLAGS) $(COMMON_RFLAGS) -o $@ -i $<
+
